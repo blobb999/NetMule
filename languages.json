@@ -26,8 +26,9 @@
       "change_color": "Farbe ändern",
       "change_style": "Linienstil ändern",
       "delete_connection": "Verbindung löschen",
-      "convert_to_partnership": "Verbindung zu Partnerschaft umwandeln",
-      "convert_to_parent_child": "Zu Eltern-Kind-Beziehung umwandeln"
+      "convert_to_partnership": "Zu Partnerschaft umwandeln",
+      "convert_to_parent_child": "Zu Eltern-Kind-Beziehung umwandeln",
+      "delete_partnership": "Partnerschaft löschen"
     },
     "dialogs": {
       "person_data": "Personendaten",
@@ -131,8 +132,9 @@
       "change_color": "Change Color",
       "change_style": "Change Line Style",
       "delete_connection": "Delete Connection",
-      "convert_to_partnership": "Convert Connection to Partnership",
-      "convert_to_parent_child": "Convert to Parent-Child Relationship"
+      "convert_to_partnership": "Convert to Partnership",
+      "convert_to_parent_child": "Convert to Parent-Child Relationship",
+      "delete_partnership": "Delete Partnership"
     },
     "dialogs": {
       "person_data": "Person Data",

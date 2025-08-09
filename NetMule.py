@@ -560,7 +560,7 @@ class PartnershipEdgeItem(QGraphicsLineItem):
         convert_to_parent_child = menu.addAction(tr("context_menu.convert_to_parent_child"))
         change_color = menu.addAction(tr("context_menu.change_color"))
         change_style = menu.addAction(tr("context_menu.change_style"))
-        delete = menu.addAction(tr("context_menu.delete"))
+        delete = menu.addAction(tr("context_menu.delete_partnership"))
         
         action = menu.exec_(event.screenPos())
         
@@ -588,8 +588,8 @@ class PartnershipEdgeItem(QGraphicsLineItem):
             return
             
         menu = QMenu()
-        to_partnership = menu.addAction("Zu Partnerschaft umwandeln")
-        to_parent_child = menu.addAction("Zu Eltern-Kind-Beziehung umwandeln")
+        to_partnership = menu.addAction(tr("context_menu.convert_to_partnership"))
+        to_parent_child = menu.addAction(tr("context_menu.convert_to_parent_child"))
         
         action = menu.exec_()
         
@@ -843,9 +843,9 @@ class ChildEdgeItem(QGraphicsLineItem):
 
     def contextMenuEvent(self, event):
         menu = QMenu()
-        change_color = menu.addAction("Farbe ändern")
-        change_style = menu.addAction("Linienstil ändern")
-        delete = menu.addAction("Verbindung löschen")
+        change_color = menu.addAction(tr("context_menu.change_color"))
+        change_style = menu.addAction(tr("context_menu.change_style"))
+        delete = menu.addAction(tr("context_menu.delete_connection"))
         action = menu.exec_(event.screenPos())
         
         if action == change_color:
