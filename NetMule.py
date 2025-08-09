@@ -1,7 +1,6 @@
 #### Offene Tasks ####
-#Man kann Knoten verbinden, das lässt beide Knoten unabhängig weiter führen, neu soll man Verbinungen auch verpartnern können, wo ein Kind zentral weiter geführt wird.
-#Wird ein Kind hinzugefügt, dann nur wenn ein Partner vorhanden ist, tut man das jetzt ohne Partner, stürzt das Programm ab.
-#Bildausrichtung pulldown: links, rechts, füllend (Bild wird dynamisch in Knotengrösse eingepasst, für links rechts ist die definierte Höhe des Knotens die Massstab Referenz)
+#Sprachunterstützung englisch/deutsch - Begriffe sollten flexibel aus externer definition importierbar und ebensol flexibel auf weitere Sprachen erweiterbar sein.
+#Bildausrichtung pulldown: links, rechts, füllend (Bild wird dynamisch in Knotengrösse eingepasst, für links rechts ist die definierte Höhe des Knotens Referenz des Massstab)
 #Geburtsdatum: Checkbox für zeigen - pulldownmenu: links, mitte, rechts
 #Notizen: Checkbox für zeigen - pulldown: links, mitte, rechts
 #Mousover: Zeige alle Informationen bei Mouseover
@@ -19,6 +18,7 @@ from PyQt5.QtGui import QBrush, QPen, QColor, QFont, QPainter, QPixmap, QImage, 
 from PyQt5.QtCore import Qt, QPointF, QRectF
 import networkx as nx
 from python_gedcom_2.parser import Parser
+from language_manager import get_language_manager, tr
 
 DEFAULT_SIZE = 40  # Standardgröße für Knoten (Höhe/Breite für Rechtecke)
 
@@ -141,16 +141,13 @@ class NodeItem(QGraphicsRectItem):
 
     def contextMenuEvent(self, event):
         menu = QMenu()
-        add_child = menu.addAction("Kind hinzufügen")
-        add_partner = menu.addAction("Partner hinzufügen")
-        connect = menu.addAction("Verbinden mit…")
-        
-        # NEUE Option: Bestehenden Knoten als Kind hinzufügen
-        add_existing_as_child = menu.addAction("Bestehenden Knoten als Kind hinzufügen")
-        
-        edit = menu.addAction("Bearbeiten")
-        resize = menu.addAction("Größe ändern")
-        delete = menu.addAction("Löschen")
+        add_child = menu.addAction(tr("context_menu.add_child"))
+        add_partner = menu.addAction(tr("context_menu.add_partner"))
+        connect = menu.addAction(tr("context_menu.connect"))
+        add_existing_as_child = menu.addAction(tr("context_menu.add_existing_as_child"))
+        edit = menu.addAction(tr("context_menu.edit"))
+        resize = menu.addAction(tr("context_menu.resize"))
+        delete = menu.addAction(tr("context_menu.delete"))
         
         action = menu.exec_(event.screenPos())
         
@@ -184,16 +181,16 @@ class NodeItem(QGraphicsRectItem):
                 available_nodes.append(item)
         
         if not available_nodes:
-            QMessageBox.information(None, "Keine Knoten", 
-                                  "Keine anderen Knoten verfügbar.")
+            QMessageBox.information(None, tr("messages.info"), 
+                                  tr("messages.no_nodes_available"))
             return
         
         # Dialog zur Auswahl des Knotens
         node_names = [node.name for node in available_nodes]
         selected_name, ok = QInputDialog.getItem(
             None, 
-            "Knoten als Kind hinzufügen",
-            "Wählen Sie den Knoten aus, der als Kind hinzugefügt werden soll:",
+            tr("dialogs.add_existing_node_as_child"),
+            tr("dialogs.select_child_node"),
             node_names,
             0,
             False
@@ -269,8 +266,9 @@ class NodeItem(QGraphicsRectItem):
                                            QPen(Qt.black, 2, Qt.SolidLine))
                 self.scene_ref.addItem(parent_child_edge)
             
-            QMessageBox.information(None, "Erfolg", 
-                                  f"{child_node.name} wurde als Kind zu {self.name} hinzugefügt.")
+            QMessageBox.information(None, tr("messages.success"), 
+                                  tr("messages.child_added_successfully", 
+                                     child=child_node.name, parent=self.name))
             
             # Undo-Funktionalität
             if hasattr(self.scene_ref, 'undo_stack'):
@@ -279,8 +277,8 @@ class NodeItem(QGraphicsRectItem):
                 )
                 
         except Exception as e:
-            QMessageBox.critical(None, "Fehler", 
-                               f"Fehler beim Erstellen der Eltern-Kind-Beziehung: {e}")
+            QMessageBox.critical(None, tr("messages.error"), 
+                               tr("messages.error_parent_child_relationship", error=str(e)))
 
     def convert_connection_to_parent_child(self, other_node):
         """Wandelt eine bestehende normale Verbindung in eine Eltern-Kind-Beziehung um"""
@@ -289,13 +287,15 @@ class NodeItem(QGraphicsRectItem):
             
         try:
             # Dialog zur Bestimmung wer Elternteil und wer Kind ist
-            options = [f"{self.name} ist Elternteil von {other_node.name}",
-                      f"{other_node.name} ist Elternteil von {self.name}"]
+            options = [
+                tr("relationship_options.parent_of", parent=self.name, child=other_node.name),
+                tr("relationship_options.parent_of", parent=other_node.name, child=self.name)
+            ]
             
             choice, ok = QInputDialog.getItem(
                 None,
-                "Eltern-Kind-Beziehung",
-                "Wählen Sie die Richtung der Beziehung:",
+                tr("dialogs.parent_child_relationship"),
+                tr("dialogs.select_relationship_direction"),
                 options,
                 0,
                 False
@@ -313,7 +313,6 @@ class NodeItem(QGraphicsRectItem):
         except Exception as e:
             print(f"Fehler beim Umwandeln zu Eltern-Kind-Beziehung: {e}")
             return False
-
 
     def add_child(self):
         """Korrigierte add_child Methode - verhindert Absturz wenn kein Partner vorhanden"""
@@ -464,7 +463,12 @@ class NodeItem(QGraphicsRectItem):
 
     def resize_node(self):
         old_size = self.size
-        size, ok = QInputDialog.getInt(None, "Größe ändern", "Neue Größe (Breite/Höhe in Pixel):", self.size, 20, 200)
+        size, ok = QInputDialog.getInt(
+            None, 
+            tr("dialogs.resize_node"), 
+            tr("dialogs.new_size"), 
+            self.size, 20, 200
+        )
         if ok:
             self.size = size
             if self.graph and self.name in self.graph.nodes:
@@ -551,16 +555,12 @@ class PartnershipEdgeItem(QGraphicsLineItem):
     def contextMenuEvent(self, event):
         """Erweiterte Kontextmenü-Methode mit Partnerschaftsoptionen"""
         menu = QMenu()
-        add_child = menu.addAction("Kind hinzufügen")
-        add_partner = menu.addAction("Partner hinzufügen")
-        connect = menu.addAction("Verbinden mit…")
-        
-        # NEUE Option: Bestehende Verbindung zu Partnerschaft umwandeln
-        convert_to_partnership = menu.addAction("Verbindung zu Partnerschaft umwandeln")
-        
-        edit = menu.addAction("Bearbeiten")
-        resize = menu.addAction("Größe ändern")
-        delete = menu.addAction("Löschen")
+        add_child = menu.addAction(tr("context_menu.add_child"))
+        convert_to_partnership = menu.addAction(tr("context_menu.convert_to_partnership"))
+        convert_to_parent_child = menu.addAction(tr("context_menu.convert_to_parent_child"))
+        change_color = menu.addAction(tr("context_menu.change_color"))
+        change_style = menu.addAction(tr("context_menu.change_style"))
+        delete = menu.addAction(tr("context_menu.delete"))
         
         action = menu.exec_(event.screenPos())
         
@@ -573,12 +573,14 @@ class PartnershipEdgeItem(QGraphicsLineItem):
                 self.scene_ref.start_connection(self)
         elif action == convert_to_partnership:
             self.show_connection_conversion_dialog()
-        elif action == edit:
-            self.edit_node()
-        elif action == resize:
-            self.resize_node()
+        elif action == convert_to_parent_child:
+            self.convert_to_parent_child()
+        elif action == change_color:
+            self.change_color()
+        elif action == change_style:
+            self.change_line_style()
         elif action == delete:
-            self.delete_node()
+            self.delete_partnership()
 
     def show_connection_conversion_dialog_enhanced(self):
         """Erweiterte Dialog-Optionen für Verbindungsumwandlung"""
@@ -600,19 +602,22 @@ class PartnershipEdgeItem(QGraphicsLineItem):
         """Wandelt eine normale Verbindung in eine Eltern-Kind-Beziehung um"""
         try:
             # Dialog zur Bestimmung der Richtung
-            options = [f"{self.source.name} ist Elternteil von {self.dest.name}",
-                      f"{self.dest.name} ist Elternteil von {self.source.name}"]
+            options = [
+                tr("relationship_options.parent_of", parent=self.source.name, child=self.dest.name),
+                tr("relationship_options.parent_of", parent=self.dest.name, child=self.source.name)
+            ]
             
             choice, ok = QInputDialog.getItem(
                 None,
-                "Eltern-Kind-Beziehung",
-                "Wählen Sie die Richtung der Beziehung:",
+                tr("dialogs.parent_child_relationship"),
+                tr("dialogs.select_relationship_direction"),
                 options,
                 0,
                 False
             )
             
             if ok:
+                
                 # Bestehende Verbindung entfernen
                 if hasattr(self, 'graph') and self.graph:
                     if self.graph.has_edge(self.source.name, self.dest.name):
@@ -629,12 +634,18 @@ class PartnershipEdgeItem(QGraphicsLineItem):
                 # Alte visuelle Verbindung entfernen
                 self.remove()
                 
-                QMessageBox.information(None, "Erfolg", 
-                                      "Verbindung wurde zu Eltern-Kind-Beziehung umgewandelt.")
+                QMessageBox.information(
+                    None, 
+                    tr("messages.success"), 
+                    tr("messages.connection_converted_successfully")
+                )
                 return True
         except Exception as e:
-            QMessageBox.critical(None, "Fehler", 
-                               f"Fehler beim Umwandeln: {e}")
+            QMessageBox.critical(
+                None, 
+                tr("messages.error"), 
+                tr("messages.error_parent_child_relationship", error=str(e))
+            )
             return False
 
     def show_connection_conversion_dialog(self):
@@ -651,16 +662,19 @@ class PartnershipEdgeItem(QGraphicsLineItem):
                     normal_connections.append(other_node)
         
         if not normal_connections:
-            QMessageBox.information(None, "Keine Verbindungen", 
-                                  "Keine normale Verbindungen gefunden, die zu Partnerschaften umgewandelt werden können.")
+            QMessageBox.information(
+                None, 
+                tr("messages.info"), 
+                tr("messages.no_connections_found")
+            )
             return
         
         # Dialog zur Auswahl der zu konvertierenden Verbindung
         connection_names = [node.name for node in normal_connections]
         selected_name, ok = QInputDialog.getItem(
             None, 
-            "Verbindung zu Partnerschaft umwandeln",
-            "Wählen Sie die Verbindung aus, die zu einer Partnerschaft umgewandelt werden soll:",
+            tr("dialogs.convert_connection"),
+            tr("dialogs.select_connection_to_convert"),
             connection_names,
             0,
             False
@@ -671,9 +685,17 @@ class PartnershipEdgeItem(QGraphicsLineItem):
             if selected_node:
                 success = self.convert_connection_to_partnership(selected_node)
                 if success:
-                    QMessageBox.information(None, "Erfolg", f"Verbindung zu {selected_name} wurde zu Partnerschaft umgewandelt.")
+                    QMessageBox.information(
+                        None, 
+                        tr("messages.success"), 
+                        tr("messages.connection_to_partnership_success", name=selected_name)
+                    )
                 else:
-                    QMessageBox.warning(None, "Fehler", "Verbindung konnte nicht umgewandelt werden.")
+                    QMessageBox.warning(
+                        None, 
+                        tr("messages.warning"), 
+                        tr("messages.connection_conversion_failed")
+                    )
 
     def convert_connection_to_partnership(self, other_node):
         """Wandelt eine bestehende normale Verbindung in eine Partnerschaft um"""
@@ -959,9 +981,9 @@ class EdgeItem(QGraphicsLineItem):
 
     def contextMenuEvent(self, event):
         menu = QMenu()
-        change_color = menu.addAction("Farbe ändern")
-        change_style = menu.addAction("Linienstil ändern")
-        delete = menu.addAction("Verbindung löschen")
+        change_color = menu.addAction(tr("context_menu.change_color"))
+        change_style = menu.addAction(tr("context_menu.change_style"))
+        delete = menu.addAction(tr("context_menu.delete_connection"))
         action = menu.exec_(event.screenPos())
         
         if action == change_color:
@@ -1044,53 +1066,75 @@ class EdgeItem(QGraphicsLineItem):
 class LineStyleDialog(QDialog):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Linienstil auswählen")
+        self.setWindowTitle(tr("dialogs.line_style"))
         layout = QVBoxLayout()
         
         self.style_combo = QComboBox()
-        self.style_combo.addItems(["Durchgezogen", "Gestrichelt", "Gepunktet", "Strich-Punkt"])
-        self.style_combo.setCurrentText("Durchgezogen")
+        # Lokalisierte Linienstil-Namen
+        styles = ["solid", "dashed", "dotted", "dash_dot"]
+        for style_key in styles:
+            self.style_combo.addItem(tr(f"line_styles.{style_key}"), style_key)
+        
+        self.style_combo.setCurrentIndex(0)  # Standard: Durchgezogen
         
         layout.addWidget(self.style_combo)
         
-        self.ok_button = QPushButton("OK")
+        self.ok_button = QPushButton(tr("dialogs.ok"))
         self.ok_button.clicked.connect(self.accept)
         layout.addWidget(self.ok_button)
         
         self.setLayout(layout)
 
     def get_style(self):
-        return self.style_combo.currentText()
+        return self.style_combo.currentData()
 
 class PersonDialog(QDialog):
     def __init__(self, scene, name="", birth="", notes="", photo=None, shape="rectangle"):
         super().__init__()
-        self.setWindowTitle("Personendaten")
+        self.setWindowTitle(tr("dialogs.person_data"))
         layout = QVBoxLayout()
         form = QFormLayout()
+        
         self.name_edit = QLineEdit(name)
         self.birth_edit = QLineEdit(birth)
         self.notes_edit = QLineEdit(notes)
         self.photo_edit = QLineEdit(photo if photo else "")
-        self.photo_button = QPushButton("Foto auswählen")
+        self.photo_button = QPushButton(tr("dialogs.select_photo"))
         self.photo_button.clicked.connect(self.select_photo)
+        
         self.shape_combo = QComboBox()
-        self.shape_combo.addItems(["rectangle", "ellipse", "triangle", "oval", "circle"])  # "circle" hinzugefügt
-        self.shape_combo.setCurrentText(shape)
-        form.addRow("Name:", self.name_edit)
-        form.addRow("Geburtsdatum:", self.birth_edit)
-        form.addRow("Notizen:", self.notes_edit)
-        form.addRow("Foto:", self.photo_edit)
+        # Lokalisierte Shape-Namen
+        shapes = ["rectangle", "ellipse", "triangle", "oval", "circle"]
+        for shape_key in shapes:
+            self.shape_combo.addItem(tr(f"shapes.{shape_key}"), shape_key)
+        
+        # Aktuellen Shape setzen
+        for i in range(self.shape_combo.count()):
+            if self.shape_combo.itemData(i) == shape:
+                self.shape_combo.setCurrentIndex(i)
+                break
+        
+        form.addRow(tr("dialogs.name"), self.name_edit)
+        form.addRow(tr("dialogs.birth_date"), self.birth_edit)
+        form.addRow(tr("dialogs.notes"), self.notes_edit)
+        form.addRow(tr("dialogs.photo"), self.photo_edit)
         form.addRow(self.photo_button)
-        form.addRow("Form:", self.shape_combo)
+        form.addRow(tr("dialogs.shape"), self.shape_combo)
+        
         layout.addLayout(form)
-        self.ok_button = QPushButton("OK")
+        
+        self.ok_button = QPushButton(tr("dialogs.ok"))
         self.ok_button.clicked.connect(self.accept)
         layout.addWidget(self.ok_button)
+        
         self.setLayout(layout)
 
     def select_photo(self):
-        fname, _ = QFileDialog.getOpenFileName(self, "Foto auswählen", filter="Images (*.png *.jpg *.jpeg)")
+        fname, _ = QFileDialog.getOpenFileName(
+            self, 
+            tr("dialogs.select_photo"), 
+            filter=tr("file_filters.images")
+        )
         if fname:
             self.photo_edit.setText(fname)
 
@@ -1100,7 +1144,7 @@ class PersonDialog(QDialog):
             self.birth_edit.text(),
             self.notes_edit.text(),
             self.photo_edit.text() or None,
-            self.shape_combo.currentText()
+            self.shape_combo.currentData()  # Verwende Data statt Text für internationale Kompatibilität
         )
 
 class TreeScene(QGraphicsScene):
@@ -1176,7 +1220,8 @@ class TreeScene(QGraphicsScene):
 class TreeEditor(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("NetMule")
+        self.lang_manager = get_language_manager()
+        self.setWindowTitle(tr("app_title"))
         self.graph = nx.DiGraph()
         self.scene = TreeScene()
         self.scene.parent = self
@@ -1190,21 +1235,47 @@ class TreeEditor(QMainWindow):
 
     def create_actions(self):
         menubar = self.menuBar()
-        filem = menubar.addMenu("Datei")
-        load_act = QAction("Laden (JSON)", self, triggered=self.load_json)
-        save_act = QAction("Speichern (JSON)", self, triggered=self.save_json)
-        export_png_act = QAction("Export als PNG", self, triggered=self.export_png)
-        export_csv_act = QAction("Export als CSV", self, triggered=self.export_csv)
-        import_gedcom_act = QAction("GEDCOM importieren", self, triggered=self.import_gedcom)
-        export_gedcom_act = QAction("GEDCOM exportieren", self, triggered=self.export_gedcom)
+        
+        # Datei-Menü
+        filem = menubar.addMenu(tr("menu.file"))
+        load_act = QAction(tr("menu.load_json"), self, triggered=self.load_json)
+        save_act = QAction(tr("menu.save_json"), self, triggered=self.save_json)
+        export_png_act = QAction(tr("menu.export_png"), self, triggered=self.export_png)
+        export_csv_act = QAction(tr("menu.export_csv"), self, triggered=self.export_csv)
+        import_gedcom_act = QAction(tr("menu.import_gedcom"), self, triggered=self.import_gedcom)
+        export_gedcom_act = QAction(tr("menu.export_gedcom"), self, triggered=self.export_gedcom)
         filem.addActions([load_act, save_act, export_png_act, export_csv_act, import_gedcom_act, export_gedcom_act])
         
-        editm = menubar.addMenu("Bearbeiten")
-        addn = QAction("Knoten hinzufügen", self, triggered=self.add_node)
-        undo_act = QAction("Rückgängig", self, triggered=self.undo)
-        redo_act = QAction("Wiederholen", self, triggered=self.redo)
-        search_act = QAction("Person suchen", self, triggered=self.search_person)
+        # Bearbeiten-Menü
+        editm = menubar.addMenu(tr("menu.edit"))
+        addn = QAction(tr("menu.add_node"), self, triggered=self.add_node)
+        undo_act = QAction(tr("menu.undo"), self, triggered=self.undo)
+        redo_act = QAction(tr("menu.redo"), self, triggered=self.redo)
+        search_act = QAction(tr("menu.search_person"), self, triggered=self.search_person)
         editm.addActions([addn, undo_act, redo_act, search_act])
+        
+        # Sprache-Menü
+        lang_menu = menubar.addMenu("Language / Sprache")
+        for lang_code in self.lang_manager.get_available_languages():
+            lang_name = "Deutsch" if lang_code == "de" else "English" if lang_code == "en" else lang_code
+            lang_action = QAction(lang_name, self)
+            lang_action.triggered.connect(lambda checked, code=lang_code: self.change_language(code))
+            lang_menu.addAction(lang_action)
+
+    def change_language(self, language_code: str):
+        """Ändert die Sprache der Anwendung"""
+        if self.lang_manager.set_language(language_code):
+            # Menüs und UI-Elemente neu erstellen
+            self.setWindowTitle(tr("app_title"))
+            self.menuBar().clear()
+            self.create_actions()
+            
+            # Nachricht über erfolgreiche Sprachänderung
+            QMessageBox.information(
+                self, 
+                tr("messages.info"), 
+                "Language changed successfully / Sprache erfolgreich geändert"
+            )
 
     def add_node(self):
         dialog = PersonDialog(self.scene)
@@ -1264,8 +1335,12 @@ class TreeEditor(QMainWindow):
                 print(f"TreeEditor.update_edge_style: Updated partner edge {edge_key}, Style={style}")
 
     def save_json(self):
-        """Korrigierte save_json Methode"""
-        fname, _ = QFileDialog.getSaveFileName(self, "Speichern", filter="JSON (*.json)")
+        """Korrigierte save_json Methode mit Lokalisierung"""
+        fname, _ = QFileDialog.getSaveFileName(
+            self, 
+            tr("menu.save_json"), 
+            filter=tr("file_filters.json")
+        )
         if fname:
             try:
                 # Positionen und Eigenschaften aller Knoten aktualisieren
@@ -1343,9 +1418,18 @@ class TreeEditor(QMainWindow):
                 data = nx.node_link_data(self.graph)
                 with open(fname, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
-                QMessageBox.information(self, "Gespeichert", "Datei erfolgreich gespeichert.")
+                QMessageBox.information(
+                    self, 
+                    tr("messages.success"), 
+                    tr("messages.saved_successfully")
+                )
             except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Speichern: {e}")
+                QMessageBox.critical(
+                    self, 
+                    tr("messages.error"), 
+                    tr("messages.error_saving", error=str(e))
+                )
+
 
     def _get_style_name_from_pen(self, pen):
         """Hilfsmethode: Stil-Namen aus QPen ableiten"""
@@ -1371,8 +1455,12 @@ class TreeEditor(QMainWindow):
 
 
     def load_json(self):
-        """Korrigierte load_json Methode"""
-        fname, _ = QFileDialog.getOpenFileName(self, "Laden", filter="JSON (*.json)")
+        """Korrigierte load_json Methode mit Lokalisierung"""
+        fname, _ = QFileDialog.getOpenFileName(
+            self, 
+            tr("menu.load_json"), 
+            filter=tr("file_filters.json")
+        )
         if fname:
             try:
                 with open(fname, "r", encoding="utf-8") as f:
@@ -1482,39 +1570,68 @@ class TreeEditor(QMainWindow):
                             partnership_edge.child_edges.append(child_edge)
                             print(f"TreeEditor.load_json: Loaded child edge {partnership_key} -> {v}, Style={style_name}, Color={color.name()}")
                 
-                QMessageBox.information(self, "Geladen", "Datei erfolgreich geladen.")
+                QMessageBox.information(
+                    self, 
+                    tr("messages.success"), 
+                    tr("messages.loaded_successfully")
+                )
             except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Laden: {e}")
-
-
+                QMessageBox.critical(
+                    self, 
+                    tr("messages.error"), 
+                    tr("messages.error_loading", error=str(e))
+                )
 
     def export_png(self):
         try:
             rect = self.scene.itemsBoundingRect()
             if rect.isEmpty():
-                QMessageBox.information(self, "Export", "Keine Objekte zum Exportieren vorhanden.")
+                QMessageBox.information(
+                    self, 
+                    tr("messages.info"), 
+                    tr("messages.no_objects_to_export")
+                )
                 return
             
             img = QPixmap(int(rect.width()) + 20, int(rect.height()) + 20)
             img.fill(Qt.white)
             painter = QPainter(img)
             painter.setRenderHint(QPainter.Antialiasing)
-            # KORRIGIERT: QRectF statt QRect verwenden
             target_rect = QRectF(10, 10, rect.width(), rect.height())
             self.scene.render(painter, target_rect, rect)
             painter.end()
             
-            fname, _ = QFileDialog.getSaveFileName(self, "PNG speichern", filter="PNG (*.png)")
+            fname, _ = QFileDialog.getSaveFileName(
+                self, 
+                tr("menu.export_png"), 
+                filter=tr("file_filters.png")
+            )
             if fname:
                 if img.save(fname, "PNG"):
-                    QMessageBox.information(self, "Export", "PNG erfolgreich exportiert.")
+                    QMessageBox.information(
+                        self, 
+                        tr("messages.success"), 
+                        tr("messages.exported_successfully")
+                    )
                 else:
-                    QMessageBox.critical(self, "Fehler", "Fehler beim PNG-Export.")
+                    QMessageBox.critical(
+                        self, 
+                        tr("messages.error"), 
+                        tr("messages.error_png_export", error="Fehler beim PNG-Export")
+                    )
         except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Fehler beim PNG-Export: {e}")
+            QMessageBox.critical(
+                self, 
+                tr("messages.error"), 
+                tr("messages.error_png_export", error=str(e))
+            )
 
     def export_csv(self):
-        fname, _ = QFileDialog.getSaveFileName(self, "Excel speichern", filter="Excel (*.xlsx)")
+        fname, _ = QFileDialog.getSaveFileName(
+            self, 
+            tr("menu.export_csv"), 
+            filter=tr("file_filters.excel")
+        )
         if fname:
             try:
                 nodes_data = []
@@ -1543,12 +1660,24 @@ class TreeEditor(QMainWindow):
                     nodes_df.to_excel(writer, sheet_name="Personen", index=False)
                     edges_df.to_excel(writer, sheet_name="Beziehungen", index=False)
                 
-                QMessageBox.information(self, "Export", "Excel-Datei erfolgreich exportiert.")
+                QMessageBox.information(
+                    self, 
+                    tr("messages.success"), 
+                    tr("messages.excel_exported_successfully")
+                )
             except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Excel-Export: {e}")
+                QMessageBox.critical(
+                    self, 
+                    tr("messages.error"), 
+                    tr("messages.error_excel_export", error=str(e))
+                )
 
     def import_gedcom(self):
-        fname, _ = QFileDialog.getOpenFileName(self, "GEDCOM importieren", filter="GEDCOM (*.ged)")
+        fname, _ = QFileDialog.getOpenFileName(
+            self, 
+            tr("menu.import_gedcom"), 
+            filter=tr("file_filters.gedcom")
+        )
         if fname:
             try:
                 parser = Parser()
@@ -1578,12 +1707,24 @@ class TreeEditor(QMainWindow):
                         self.scene.addItem(node)
                         node_items[individual] = node
                 
-                QMessageBox.information(self, "Import", "GEDCOM-Datei erfolgreich importiert.")
+                QMessageBox.information(
+                    self, 
+                    tr("messages.success"), 
+                    tr("messages.gedcom_imported_successfully")
+                )
             except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim GEDCOM-Import: {e}")
+                QMessageBox.critical(
+                    self, 
+                    tr("messages.error"), 
+                    tr("messages.error_gedcom_import", error=str(e))
+                )
 
     def export_gedcom(self):
-        QMessageBox.information(self, "Export", "GEDCOM-Export ist in dieser Version nicht verfügbar.")
+        QMessageBox.information(
+            self, 
+            tr("messages.info"), 
+            tr("messages.gedcom_export_unavailable")
+        )
 
     def undo(self):
         if self.scene.undo_stack:
@@ -1695,7 +1836,11 @@ class TreeEditor(QMainWindow):
                             break
                             
             except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Rückgängig machen: {e}")
+                QMessageBox.critical(
+                    self, 
+                    tr("messages.error"), 
+                    tr("messages.error_undo", error=str(e))
+                )
 
     def redo(self):
         if self.scene.redo_stack:
@@ -1799,10 +1944,18 @@ class TreeEditor(QMainWindow):
                             break
                             
             except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Wiederholen: {e}")
+                QMessageBox.critical(
+                    self, 
+                    tr("messages.error"), 
+                    tr("messages.error_redo", error=str(e))
+                )
 
     def search_person(self):
-        name, ok = QInputDialog.getText(self, "Person suchen", "Name:")
+        name, ok = QInputDialog.getText(
+            self, 
+            tr("dialogs.search"), 
+            tr("dialogs.search_name")
+        )
         if ok and name:
             found = False
             for item in self.scene.items():
@@ -1814,7 +1967,11 @@ class TreeEditor(QMainWindow):
                     break
             
             if not found:
-                QMessageBox.information(self, "Suche", "Person nicht gefunden.")
+                QMessageBox.information(
+                    self, 
+                    tr("messages.info"), 
+                    tr("messages.person_not_found")
+                )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
