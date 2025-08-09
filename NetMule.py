@@ -1335,101 +1335,107 @@ class TreeEditor(QMainWindow):
                 print(f"TreeEditor.update_edge_style: Updated partner edge {edge_key}, Style={style}")
 
     def save_json(self):
-        """Korrigierte save_json Methode mit Lokalisierung"""
-        fname, _ = QFileDialog.getSaveFileName(
-            self, 
-            tr("menu.save_json"), 
-            filter=tr("file_filters.json")
-        )
-        if fname:
-            try:
-                # Positionen und Eigenschaften aller Knoten aktualisieren
-                for item in self.scene.items():
-                    if isinstance(item, NodeItem) and item.name in self.graph.nodes:
-                        self.graph.nodes[item.name]['pos'] = [item.pos().x(), item.pos().y()]
-                        self.graph.nodes[item.name]['color'] = item.color.name()
-                        self.graph.nodes[item.name]['photo'] = item.photo
-                        self.graph.nodes[item.name]['font_family'] = item.font.family()
-                        self.graph.nodes[item.name]['font_size'] = item.font.pointSize()
-                        self.graph.nodes[item.name]['font_weight'] = item.font.weight()
-                        self.graph.nodes[item.name]['font_italic'] = item.font.italic()
-                        self.graph.nodes[item.name]['shape'] = item.shape
-                        self.graph.nodes[item.name]['size'] = item.size
-                        print(f"TreeEditor.save_json: Saving node {item.name}, Color={item.color.name()}")
-                
-                # KORRIGIERT: Alle Kanten aus dem Graph entfernen und neu aufbauen
-                # um sicherzustellen, dass die aktuellen visuellen Zustände gespeichert werden
-                edges_to_remove = list(self.graph.edges(data=True))
-                for u, v, data in edges_to_remove:
-                    self.graph.remove_edge(u, v)
-                
-                # Kantenattribute aus visuellen Objekten neu aufbauen
-                partnership_nodes_added = set()
-                
-                for item in self.scene.items():
-                    if isinstance(item, PartnershipEdgeItem):
-                        # Partnership-Kante speichern
-                        edge_key = (item.source.name, item.dest.name)
-                        style = self._get_style_name_from_pen(item.pen)
-                        
-                        self.graph.add_edge(
-                            item.source.name,
-                            item.dest.name,
-                            type='partner',
-                            color=item.pen.color().name(),
-                            style=style
-                        )
-                        print(f"TreeEditor.save_json: Saving partner edge {edge_key}, Style={style}, Color={item.pen.color().name()}")
-                        
-                        # Partnership-Knoten für Kinder erstellen
-                        partnership_key = f"partnership_{item.source.name}_{item.dest.name}"
-                        if partnership_key not in partnership_nodes_added:
-                            self.graph.add_node(partnership_key, type="partnership")
-                            partnership_nodes_added.add(partnership_key)
-                        
-                        # Kind-Kanten von Partnerschaften speichern
-                        for child_edge in item.child_edges:
-                            child = child_edge.child
-                            child_style = self._get_style_name_from_pen(child_edge.pen)
+            """Korrigierte save_json Methode mit hartkodiertem Filter für PyInstaller"""
+            # KORRIGIERT: Hartkodierter Filter statt Übersetzung für PyInstaller-Kompatibilität
+            fname, _ = QFileDialog.getSaveFileName(
+                self, 
+                "Save JSON File",  # Hartkodiert statt tr("menu.save_json")
+                "",  # Kein Standard-Dateiname
+                "JSON Files (*.json);;All Files (*.*)"  # Hartkodierter Filter
+            )
+            if fname:
+                try:
+                    # Stelle sicher, dass die Datei die .json Erweiterung hat
+                    if not fname.lower().endswith('.json'):
+                        fname += '.json'
+                    
+                    # Positionen und Eigenschaften aller Knoten aktualisieren
+                    for item in self.scene.items():
+                        if isinstance(item, NodeItem) and item.name in self.graph.nodes:
+                            self.graph.nodes[item.name]['pos'] = [item.pos().x(), item.pos().y()]
+                            self.graph.nodes[item.name]['color'] = item.color.name()
+                            self.graph.nodes[item.name]['photo'] = item.photo
+                            self.graph.nodes[item.name]['font_family'] = item.font.family()
+                            self.graph.nodes[item.name]['font_size'] = item.font.pointSize()
+                            self.graph.nodes[item.name]['font_weight'] = item.font.weight()
+                            self.graph.nodes[item.name]['font_italic'] = item.font.italic()
+                            self.graph.nodes[item.name]['shape'] = item.shape
+                            self.graph.nodes[item.name]['size'] = item.size
+                            print(f"TreeEditor.save_json: Saving node {item.name}, Color={item.color.name()}")
+                    
+                    # KORRIGIERT: Alle Kanten aus dem Graph entfernen und neu aufbauen
+                    # um sicherzustellen, dass die aktuellen visuellen Zustände gespeichert werden
+                    edges_to_remove = list(self.graph.edges(data=True))
+                    for u, v, data in edges_to_remove:
+                        self.graph.remove_edge(u, v)
+                    
+                    # Kantenattribute aus visuellen Objekten neu aufbauen
+                    partnership_nodes_added = set()
+                    
+                    for item in self.scene.items():
+                        if isinstance(item, PartnershipEdgeItem):
+                            # Partnership-Kante speichern
+                            edge_key = (item.source.name, item.dest.name)
+                            style = self._get_style_name_from_pen(item.pen)
                             
                             self.graph.add_edge(
-                                partnership_key, 
-                                child.name, 
-                                type="parent-child",
-                                color=child_edge.pen.color().name(),
-                                style=child_style
+                                item.source.name,
+                                item.dest.name,
+                                type='partner',
+                                color=item.pen.color().name(),
+                                style=style
                             )
-                            print(f"TreeEditor.save_json: Saving child edge {partnership_key} -> {child.name}, Style={child_style}, Color={child_edge.pen.color().name()}")
-                    
-                    elif isinstance(item, EdgeItem):
-                        # Normale Kante speichern
-                        edge_key = (item.source.name, item.dest.name)
-                        style = self._get_style_name_from_pen(item.pen)
+                            print(f"TreeEditor.save_json: Saving partner edge {edge_key}, Style={style}, Color={item.pen.color().name()}")
+                            
+                            # Partnership-Knoten für Kinder erstellen
+                            partnership_key = f"partnership_{item.source.name}_{item.dest.name}"
+                            if partnership_key not in partnership_nodes_added:
+                                self.graph.add_node(partnership_key, type="partnership")
+                                partnership_nodes_added.add(partnership_key)
+                            
+                            # Kind-Kanten von Partnerschaften speichern
+                            for child_edge in item.child_edges:
+                                child = child_edge.child
+                                child_style = self._get_style_name_from_pen(child_edge.pen)
+                                
+                                self.graph.add_edge(
+                                    partnership_key, 
+                                    child.name, 
+                                    type="parent-child",
+                                    color=child_edge.pen.color().name(),
+                                    style=child_style
+                                )
+                                print(f"TreeEditor.save_json: Saving child edge {partnership_key} -> {child.name}, Style={child_style}, Color={child_edge.pen.color().name()}")
                         
-                        self.graph.add_edge(
-                            item.source.name,
-                            item.dest.name,
-                            type="custom",
-                            color=item.pen.color().name(),
-                            style=style
-                        )
-                        print(f"TreeEditor.save_json: Saving edge {edge_key}, Style={style}, Color={item.pen.color().name()}")
+                        elif isinstance(item, EdgeItem):
+                            # Normale Kante speichern
+                            edge_key = (item.source.name, item.dest.name)
+                            style = self._get_style_name_from_pen(item.pen)
+                            
+                            self.graph.add_edge(
+                                item.source.name,
+                                item.dest.name,
+                                type="custom",
+                                color=item.pen.color().name(),
+                                style=style
+                            )
+                            print(f"TreeEditor.save_json: Saving edge {edge_key}, Style={style}, Color={item.pen.color().name()}")
+                            
+                    data = nx.node_link_data(self.graph)
+                    with open(fname, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
                         
-                data = nx.node_link_data(self.graph)
-                with open(fname, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=2)
-                QMessageBox.information(
-                    self, 
-                    tr("messages.success"), 
-                    tr("messages.saved_successfully")
-                )
-            except Exception as e:
-                QMessageBox.critical(
-                    self, 
-                    tr("messages.error"), 
-                    tr("messages.error_saving", error=str(e))
-                )
-
+                    QMessageBox.information(
+                        self, 
+                        "Success",  # Hartkodiert statt tr("messages.success")
+                        "File saved successfully!"  # Hartkodiert statt tr("messages.saved_successfully")
+                    )
+                except Exception as e:
+                    QMessageBox.critical(
+                        self, 
+                        "Error",  # Hartkodiert statt tr("messages.error")
+                        f"Error saving file: {str(e)}"  # Hartkodiert statt tr("messages.error_saving", error=str(e))
+                    )
 
     def _get_style_name_from_pen(self, pen):
         """Hilfsmethode: Stil-Namen aus QPen ableiten"""
@@ -1455,11 +1461,13 @@ class TreeEditor(QMainWindow):
 
 
     def load_json(self):
-        """Korrigierte load_json Methode mit Lokalisierung"""
+        """Korrigierte load_json Methode mit hartkodiertem Filter für PyInstaller"""
+        # KORRIGIERT: Hartkodierter Filter statt Übersetzung für PyInstaller-Kompatibilität
         fname, _ = QFileDialog.getOpenFileName(
             self, 
-            tr("menu.load_json"), 
-            filter=tr("file_filters.json")
+            "Load JSON File",  # Hartkodiert statt tr("menu.load_json")
+            "",  # Kein Standard-Pfad
+            "JSON Files (*.json);;All Files (*.*)"  # Hartkodierter Filter - DAS WAR DAS PROBLEM!
         )
         if fname:
             try:
@@ -1572,24 +1580,25 @@ class TreeEditor(QMainWindow):
                 
                 QMessageBox.information(
                     self, 
-                    tr("messages.success"), 
-                    tr("messages.loaded_successfully")
+                    "Success",  # Hartkodiert statt tr("messages.success")
+                    "File loaded successfully!"  # Hartkodiert statt tr("messages.loaded_successfully")
                 )
             except Exception as e:
                 QMessageBox.critical(
                     self, 
-                    tr("messages.error"), 
-                    tr("messages.error_loading", error=str(e))
+                    "Error",  # Hartkodiert statt tr("messages.error")
+                    f"Error loading file: {str(e)}"  # Hartkodiert statt tr("messages.error_loading", error=str(e))
                 )
 
     def export_png(self):
+        """Korrigierte export_png Methode mit hartkodiertem Filter"""
         try:
             rect = self.scene.itemsBoundingRect()
             if rect.isEmpty():
                 QMessageBox.information(
                     self, 
-                    tr("messages.info"), 
-                    tr("messages.no_objects_to_export")
+                    "Information",  # Hartkodiert
+                    "No objects to export."  # Hartkodiert
                 )
                 return
             
@@ -1601,39 +1610,52 @@ class TreeEditor(QMainWindow):
             self.scene.render(painter, target_rect, rect)
             painter.end()
             
+            # KORRIGIERT: Hartkodierter Filter für PNG Export
             fname, _ = QFileDialog.getSaveFileName(
                 self, 
-                tr("menu.export_png"), 
-                filter=tr("file_filters.png")
+                "Export PNG",  # Hartkodiert
+                "",
+                "PNG Files (*.png);;All Files (*.*)"  # Hartkodierter Filter
             )
             if fname:
+                # Stelle sicher, dass die Datei die .png Erweiterung hat
+                if not fname.lower().endswith('.png'):
+                    fname += '.png'
+                
                 if img.save(fname, "PNG"):
                     QMessageBox.information(
                         self, 
-                        tr("messages.success"), 
-                        tr("messages.exported_successfully")
+                        "Success",  # Hartkodiert
+                        "PNG exported successfully!"  # Hartkodiert
                     )
                 else:
                     QMessageBox.critical(
                         self, 
-                        tr("messages.error"), 
-                        tr("messages.error_png_export", error="Fehler beim PNG-Export")
+                        "Error",  # Hartkodiert
+                        "Error exporting PNG file."  # Hartkodiert
                     )
         except Exception as e:
             QMessageBox.critical(
                 self, 
-                tr("messages.error"), 
-                tr("messages.error_png_export", error=str(e))
+                "Error",  # Hartkodiert
+                f"Error exporting PNG: {str(e)}"  # Hartkodiert
             )
 
     def export_csv(self):
+        """Korrigierte export_csv Methode mit hartkodiertem Filter"""
+        # KORRIGIERT: Hartkodierter Filter für Excel Export
         fname, _ = QFileDialog.getSaveFileName(
             self, 
-            tr("menu.export_csv"), 
-            filter=tr("file_filters.excel")
+            "Export Excel",  # Hartkodiert
+            "",
+            "Excel Files (*.xlsx);;All Files (*.*)"  # Hartkodierter Filter
         )
         if fname:
             try:
+                # Stelle sicher, dass die Datei die .xlsx Erweiterung hat
+                if not fname.lower().endswith('.xlsx'):
+                    fname += '.xlsx'
+                
                 nodes_data = []
                 for n, d in self.graph.nodes(data=True):
                     nodes_data.append({
@@ -1662,21 +1684,24 @@ class TreeEditor(QMainWindow):
                 
                 QMessageBox.information(
                     self, 
-                    tr("messages.success"), 
-                    tr("messages.excel_exported_successfully")
+                    "Success",  # Hartkodiert
+                    "Excel file exported successfully!"  # Hartkodiert
                 )
             except Exception as e:
                 QMessageBox.critical(
                     self, 
-                    tr("messages.error"), 
-                    tr("messages.error_excel_export", error=str(e))
+                    "Error",  # Hartkodiert
+                    f"Error exporting Excel: {str(e)}"  # Hartkodiert
                 )
 
     def import_gedcom(self):
+        """Korrigierte import_gedcom Methode mit hartkodiertem Filter"""
+        # KORRIGIERT: Hartkodierter Filter für GEDCOM Import
         fname, _ = QFileDialog.getOpenFileName(
             self, 
-            tr("menu.import_gedcom"), 
-            filter=tr("file_filters.gedcom")
+            "Import GEDCOM",  # Hartkodiert
+            "",
+            "GEDCOM Files (*.ged);;All Files (*.*)"  # Hartkodierter Filter
         )
         if fname:
             try:
@@ -1709,14 +1734,14 @@ class TreeEditor(QMainWindow):
                 
                 QMessageBox.information(
                     self, 
-                    tr("messages.success"), 
-                    tr("messages.gedcom_imported_successfully")
+                    "Success",  # Hartkodiert
+                    "GEDCOM file imported successfully!"  # Hartkodiert
                 )
             except Exception as e:
                 QMessageBox.critical(
                     self, 
-                    tr("messages.error"), 
-                    tr("messages.error_gedcom_import", error=str(e))
+                    "Error",  # Hartkodiert
+                    f"Error importing GEDCOM: {str(e)}"  # Hartkodiert
                 )
 
     def export_gedcom(self):

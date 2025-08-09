@@ -32,7 +32,7 @@ hiddenimports = [
     'networkx.algorithms.community',
     'networkx.algorithms.flow',
     'networkx.algorithms.isomorphism',
-    'networkx.drawing'  # Hinzugefügt, um den Fehler zu beheben
+    'networkx.drawing'
 ]
 
 # Module, die definitiv ausgeschlossen werden
@@ -82,7 +82,9 @@ a = Analysis(
     ['NetMule.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[
+        ('languages.json', '.')  # languages.json aus dem Root-Verzeichnis einbinden
+    ],
     hiddenimports=hiddenimports,
     hookspath=['.'],  # Für benutzerdefinierte Hooks
     hooksconfig={},
